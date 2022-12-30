@@ -73,6 +73,7 @@ public class RoboLuis extends Robot{
         energy = getEnergy();
         gunHeat = getGunHeat();
         orientacion = getHeading();
+        out.println ("CoorX: " + posX + " CoorY: " + posY + " Orientacion: " + orientacion +  " energía: " + energy);
     }
 
 }
