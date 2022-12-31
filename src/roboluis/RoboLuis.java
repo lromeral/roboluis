@@ -21,6 +21,7 @@ public class RoboLuis extends Robot{
     double tableroAncho; 
     double tableroAlto;
     double orientacion;
+
     
     public void RoboLuis(){
         posX = 0.0;
@@ -30,24 +31,51 @@ public class RoboLuis extends Robot{
         tableroAlto = getBattleFieldHeight();
         tableroAncho = getBattleFieldWidth();
         orientacion =0.0;
+
     }
     
 
     @Override
     public void run(){
         while (true){
-            ahead (100);
+            if (orientacion > 1){
+                    if (orientacion > 0 && orientacion <180) turnLeft (1);
+                    if (orientacion >181) turnRight (1);
+        }
+            else{
+            ahead (100);    
+            }
+        
         }
     }
     //Detecta un robot
     @Override
     public void onScannedRobot(ScannedRobotEvent e) {
-        fire(1);
+        double distancia;
+        double velocidad;
+        double bearing;
+        double orientacion;
+        String nombre;
+        
+        distancia = e.getDistance();
+        velocidad = e.getVelocity();
+        orientacion = e.getHeading();
+        bearing = e.getBearing();
+        nombre = e.getName();
+        out.println ("Robot Enemigo" );
+        out.println ("Nombre: " + nombre);
+        out.println ("Distancia: " + distancia );
+        out.println ("Orientacion: " + orientacion);
+        out.println ("Velocidad: " + velocidad );
+        out.println ("Bearing: " + bearing );
+        //fire(1);
     }    
     
     //This method is called when one of your bullets hits another robot.
     @Override
-    public void onBulletHit(BulletHitEvent event){}
+    public void onBulletHit(BulletHitEvent event){
+        out.println ("Me han dado");
+    }
     
     //This method is called when one of your bullets misses, i.e. hits a wall.
     @Override
@@ -63,7 +91,18 @@ public class RoboLuis extends Robot{
     
     //This method is called when your robot collides with a wall.
     @Override
-    public void onHitWall(HitWallEvent event){}
+    public void onHitWall(HitWallEvent event){
+        //Hay que calcular cuanto ocupa el robot en px porque hay veces que choca y no salta el evento
+        
+        //Estoy en pared izquierda    
+        if (posX == 0){
+            turnRight(180);
+        }
+        //Estoy en pared derecha
+        else if (posX==tableroAncho){
+            turnLeft(180);
+        }
+    }
 
     @Override
     //This method is called every turn in a battle round in order to provide the robot status as a complete snapshot of the robot's current state at that specific time.
@@ -73,7 +112,8 @@ public class RoboLuis extends Robot{
         energy = getEnergy();
         gunHeat = getGunHeat();
         orientacion = getHeading();
-        out.println ("CoorX: " + posX + " CoorY: " + posY + " Orientacion: " + orientacion +  " energía: " + energy);
+        tableroAlto = getBattleFieldHeight();
+        tableroAncho = getBattleFieldWidth();
+        out.println ("CoorX: " + posX + "/" + tableroAncho + " CoorY: " + posY + "/" + tableroAlto + " Orientacion: " + orientacion +  " energía: " + energy);
     }
-
 }
