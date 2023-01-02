@@ -4,6 +4,7 @@
  */
 package roboluis;
 import robocode.*;
+import static robocode.util.Utils.normalRelativeAngleDegrees;
 
 /**
  * Robot para asignatura PROGRAMACION
@@ -12,7 +13,7 @@ import robocode.*;
  * 
  * ROBOCODE API: https://robocode.sourceforge.io/docs/robocode/
  */
-public class RoboLuis extends Robot{
+public class RoboLuis extends Robot {
     
     double posX;
     double posY;
@@ -21,7 +22,14 @@ public class RoboLuis extends Robot{
     double tableroAncho; 
     double tableroAlto;
     double orientacion;
-
+    final static double ROBOT_HEIGHT = 36 * 2;
+    final static double ROBOT_WIDTH = 36 * 2;
+    final static int ESQ_INF_IZDA = 1;
+    final static int ESQ_SUP_IZDA = 2;
+    final static int ESQ_SUP_DCHA = 3;
+    final static int ESQ_INF_DCHA = 4;
+    final static int CENTRO = 0;
+  
     
     public void RoboLuis(){
         posX = 0.0;
@@ -37,39 +45,32 @@ public class RoboLuis extends Robot{
 
     @Override
     public void run(){
-        while (true){
-            if (orientacion > 1){
-                    if (orientacion > 0 && orientacion <180) turnLeft (1);
-                    if (orientacion >181) turnRight (1);
-        }
-            else{
-            ahead (100);    
-            }
         
+        //Vamos a nuestra esquina preferida
+          
+        //turnRight(normalRelativeAngleDegrees(corner - getHeading()));
+        //Obtener la posicion donde salimos con getHeading() y luego hay que girarse hasta apuntar a la esquina que queramos.
+        out.println ("Empieza");
+        for (int i=1;i<5;i++){
+            out.println ("ESquina:" + i);
+            irAEsquina (i);
+            fire (1);
         }
+        
+        
+        
+ 
     }
     //Detecta un robot
     @Override
     public void onScannedRobot(ScannedRobotEvent e) {
-        double distancia;
-        double velocidad;
-        double bearing;
-        double orientacion;
-        String nombre;
-        
-        distancia = e.getDistance();
-        velocidad = e.getVelocity();
-        orientacion = e.getHeading();
-        bearing = e.getBearing();
-        nombre = e.getName();
-        out.println ("Robot Enemigo" );
-        out.println ("Nombre: " + nombre);
-        out.println ("Distancia: " + distancia );
-        out.println ("Orientacion: " + orientacion);
-        out.println ("Velocidad: " + velocidad );
-        out.println ("Bearing: " + bearing );
-        //fire(1);
-    }    
+        out.println ("Robot encontrado: " + e.getName());
+        out.println ("Robot a:" + e.getDistance());
+        out.println ("Robot Orientacion: " + e.getHeading());
+        out.println ("Robot Velocidad: "+ e.getVelocity());
+        out.println ("Robot energia: " + e.getEnergy());
+        out.println ("Robot bearing: " + e.getBearing());
+    }   
     
     //This method is called when one of your bullets hits another robot.
     @Override
@@ -92,16 +93,7 @@ public class RoboLuis extends Robot{
     //This method is called when your robot collides with a wall.
     @Override
     public void onHitWall(HitWallEvent event){
-        //Hay que calcular cuanto ocupa el robot en px porque hay veces que choca y no salta el evento
-        
-        //Estoy en pared izquierda    
-        if (posX == 0){
-            turnRight(180);
-        }
-        //Estoy en pared derecha
-        else if (posX==tableroAncho){
-            turnLeft(180);
-        }
+        out.println ("impacto pared");
     }
 
     @Override
@@ -112,8 +104,81 @@ public class RoboLuis extends Robot{
         energy = getEnergy();
         gunHeat = getGunHeat();
         orientacion = getHeading();
-        tableroAlto = getBattleFieldHeight();
-        tableroAncho = getBattleFieldWidth();
-        out.println ("CoorX: " + posX + "/" + tableroAncho + " CoorY: " + posY + "/" + tableroAlto + " Orientacion: " + orientacion +  " energía: " + energy);
+        
+        out.println ("CoorX: " + posX + " CoorY: " + posY + " Orientacion: " + orientacion +  "O. Norm: " + normalRelativeAngleDegrees(orientacion)    + " energía: " + energy);
+    }
+    
+    //Se desplaza a una esquina
+    //Las esquinas estan nombradas 1,2,3 y 4 en sentido horario empezando por la inferior izquierda
+    //1 - Esquina inferior Izquierda
+    //2 - Esquina Superior Izquierda
+    //3 - Esquina Superior Derecha
+    //4 - Esquina Inferior Derecha
+    public void irAEsquina (int numEsquina){
+        out.println ("Ir a esquina");
+        switch (numEsquina){
+            case 0:
+                break;
+            case 1:
+                //Girar para encarse a la pared izquierda
+                girarHastaGrado (getHeading(), 270);
+                //Avanzar hasta la pared
+                ahead(getX());
+                //Gira 90 grados a la izquierda
+                turnLeft(90);
+                //Avanza hasta la esquina (0,0)
+                ahead (getY());
+                //Gira 135º para encarse al tablero
+                turnLeft (135);
+                break;
+            case 2:
+                //Girar para encarse a la pared izquierda
+                girarHastaGrado (getHeading(), 270);
+                //Avanzar hasta la pared
+                ahead(getX());
+                //Gira 90 grados a la izquierda
+                turnRight(90);
+                //Avanza hasta la esquina (0,0)
+                ahead (getBattleFieldHeight() - getY());
+                //Gira 135º para encarse al tablero
+                turnRight (135);
+                break;
+            case 3:
+                //Girar para encarse a la pared izquierda
+                girarHastaGrado (getHeading(), 90);
+                //Avanzar hasta la pared
+                ahead(getBattleFieldWidth () - getX());
+                //Gira 90 grados a la izquierda
+                turnLeft(90);
+                //Avanza hasta la esquina (0,0)
+                ahead (getBattleFieldHeight() - getY());
+                //Gira 135º para encarse al tablero
+                turnLeft (135);
+                break;
+            case 4:
+                //Girar para encarse a la pared izquierda
+                girarHastaGrado (getHeading(), 90);
+                //Avanzar hasta la pared
+                ahead(getBattleFieldWidth () - getX());
+                //Gira 90 grados a la izquierda
+                turnRight(90);
+                //Avanza hasta la esquina (0,0)
+                ahead (getY());
+                //Gira 135º para encarse al tablero
+                turnRight (135);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    private void girarHastaGrado (double origen, double destino){
+        if (origen > destino){
+            turnLeft (origen - destino);
+        }else if (origen < destino){
+            turnRight(destino - origen);
+        }else{
+            //Nada
+        }
     }
 }
