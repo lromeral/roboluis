@@ -26,6 +26,7 @@ public class RoboLuis extends Robot {
     static int leHeDado;
     static int numRobotsEnCombate;
     int poderDeDisparo;
+    int esquinaDestino;
     boolean hayRobot = false;
     final static double ROBOT_HEIGHT = 36 * 2;
     final static double ROBOT_WIDTH = 36 * 2;
@@ -41,18 +42,20 @@ public class RoboLuis extends Robot {
         posY=0.0;
         energy = 100;
         gunHeat = 0;
-        tableroAlto = getBattleFieldHeight();
-        tableroAncho = getBattleFieldWidth();
         orientacion =0.0;
-        poderDeDisparo = 1;
         numRobotsEnCombate = 0;
-
+        meHanDado = 0;
+        leHeDado = 0;
     } 
     
     public void centroDeDisparo(ScannedRobotEvent enemigo){
-        double distanciaDisparo = 50;
-        double energiaDisparo = 90;
+        final double distanciaDisparo = (tableroAlto + tableroAncho)/4;
+        final double energiaDisparo = 90;
+        final int impactosAnteriores = 1;
         boolean disparo = false;
+        
+        //Se ha solicitado una evaluación de disparo por lo que hay que parar todo
+        //stop();
         
         out.println ("Centro de Disparo");
         //Merece la pena disparar? 
@@ -62,8 +65,15 @@ public class RoboLuis extends Robot {
         //  -Le hemos dado anteriormente
         //  -Distancia a la que está
         
+        
+        //Condiciones:
+        out.println ("Condiciones de disparo:");
+        out.println ("Impacto anterior: "  + impactosAnteriores + "/" + leHeDado);
+        out.println ("Energia: " + energiaDisparo + "/" + energy);
+        out.println ("Distancia: " + enemigo.getDistance() + "/" + distanciaDisparo);
+        
         //Si le hemos dado anteriormente, me da igual otra cosa que disparamos
-        if (leHeDado > 1){
+        if (leHeDado > impactosAnteriores) {
             disparo = true;
         }
         //No le hemos dado anteriormente, pero...
@@ -82,14 +92,19 @@ public class RoboLuis extends Robot {
         }
         //Si hay condiciones para disparo, pum!!
         if (disparo) { 
-            out.println ("Disparo: " + poderDeDisparo);
-            fire(poderDeDisparo);
+            out.println ("Disparando: " + poderDeDisparo);
+            fire(1);
         }
+        //Devolvemos el control
+        //resume
     }
-    
-    
+
     @Override
     public void run(){
+        //Variables varias
+        poderDeDisparo = 1;
+        
+        
         
         //Cuantos robots hay
         numRobotsEnCombate = getOthers();
@@ -98,9 +113,15 @@ public class RoboLuis extends Robot {
         out.println ("Empieza");
         
         while (true){
-            for (int i=1;i<5;i++){
-                out.println ("ESquina:" + i);
-                irAEsquina (i);
+            for (esquinaDestino=1;esquinaDestino<5;esquinaDestino++){
+                out.println ("Objetivo: Esquina " + esquinaDestino);
+                irAEsquina (esquinaDestino);
+                //Me quedo en la esquina hasta que me den
+                while (meHanDado == 0){
+                    escanearTablero();
+                }
+                //Me he ido a otro sitio porque me han dado asi que reseteo el contador de camperismo
+                meHanDado = 0;
             }
         }
     }
@@ -109,7 +130,6 @@ public class RoboLuis extends Robot {
     @Override
     public void onBulletHit(BulletHitEvent event){
         out.println ("Le hemos dado");
-        
         leHeDado++;
         //Si le doy dos veces seguidas, incremento el poder
         if (leHeDado > 1) poderDeDisparo +=3;
@@ -127,17 +147,34 @@ public class RoboLuis extends Robot {
     //This method is called when your robot is hit by a bullet
     @Override
     public void onHitByBullet(HitByBulletEvent event) {
-        double[] coor = new double[1];
-
+        double locEnemigo;
         //Me han dado
         out.println ("Danger!! Me han dado");
         //Quien me ha dado
         out.println ("Nombre: " + event.getName());
         //Vamos a por el o nos vamos a otro sitio?
+        meHanDado ++;
+        out.println ("Me han dado:" + meHanDado + " veces");
         
+        //¿Donde está el que me ha dado? 
+        //Relativo a mi posicion -180 a 180
+        locEnemigo = event.getBearing();
+        out.println ("Desde: " + locEnemigo );
+        //apunta al enemigo
+        //centrarRadar ();
+        //y metele un disparo gordo
         
+        //stop();
+        out.println ("Busca, dispara y huye");
+        if (locEnemigo > 0){
+            turnRight (Math.abs(locEnemigo));
+        } 
+        else{
+            turnLeft (Math.abs(locEnemigo));
+        }
+        fire (10);
         
-    
+        //resume();
     }
     
     //This method is called when your robot collides with another robot.
@@ -157,6 +194,8 @@ public class RoboLuis extends Robot {
     public void onStatus(StatusEvent e){
         posX = getX();
         posY = getY();
+        tableroAlto = getBattleFieldHeight();
+        tableroAncho = getBattleFieldWidth();
         energy = getEnergy();
         gunHeat = getGunHeat();
         orientacion = getHeading();
@@ -174,12 +213,45 @@ public class RoboLuis extends Robot {
         out.println ("Robot Velocidad: "+ e.getVelocity());
         out.println ("Robot energia: " + e.getEnergy());
         out.println ("Robot bearing: " + e.getBearing());
-        
-        hayRobot = true;
-        
+   
         //Pasamos el control al centro de disparo
         centroDeDisparo(e);
+
     }    
+    
+    private void escanearTablero (){
+        this.escanearTablero (0,180);
+    }
+    
+    
+    private void escanearTablero (double gradosInicio, double gradosFinal){
+        //Donde estoy para girar el tablero
+        
+        out.println ("Escanear cuadrante: " + getCuadrante(posX, posY));
+        //Como tiene vueltas infinitas, buscamos origen por el giro mas corto dependiendo de la posicion inicial
+                
+        switch (getCuadrante(posX, posY)){
+            case 1:                
+                turnLeft(90);
+                turnRight(90);
+                break;
+            case 2:
+                turnLeft (-getRadarHeading());
+                turnRight(gradosFinal);
+                break;
+            case 3:
+                turnLeft (-getRadarHeading());
+                turnRight(gradosFinal);
+                break;
+            case 4:
+                turnLeft (-getRadarHeading());
+                turnRight(gradosFinal);
+                break;
+            default:
+                break;
+        }
+        
+    }
     
     //Se desplaza a una esquina
     //Las esquinas estan nombradas 1,2,3 y 4 en sentido horario empezando por la inferior izquierda
@@ -202,7 +274,7 @@ public class RoboLuis extends Robot {
                 //Avanza hasta la esquina (0,0)
                 ahead (getY());
                 //Gira 135º para encarse al tablero
-                turnLeft (135);
+                turnLeft (90);
                 break;
             case 2:
                 //Girar para encarse a la pared izquierda
@@ -214,7 +286,7 @@ public class RoboLuis extends Robot {
                 //Avanza hasta la esquina (0,0)
                 ahead (getBattleFieldHeight() - getY());
                 //Gira 135º para encarse al tablero
-                turnRight (135);
+                turnRight (90);
                 break;
             case 3:
                 //Girar para encarse a la pared izquierda
@@ -226,7 +298,7 @@ public class RoboLuis extends Robot {
                 //Avanza hasta la esquina (0,0)
                 ahead (getBattleFieldHeight() - getY());
                 //Gira 135º para encarse al tablero
-                turnLeft (135);
+                turnLeft (90);
                 break;
             case 4:
                 //Girar para encarse a la pared izquierda
@@ -238,11 +310,43 @@ public class RoboLuis extends Robot {
                 //Avanza hasta la esquina (0,0)
                 ahead (getY());
                 //Gira 135º para encarse al tablero
-                turnRight (135);
+                turnRight (90);
                 break;
             default:
                 break;
         }
+    }
+    
+    private int getCuadrante (double x, double y){
+        int cuadrante=0;
+        // 2 | 3
+        // --|---
+        // 1 | 4      
+        //Cuadrantes 1 y 2
+        if (x <= (tableroAncho/2)){
+            //Cuadrante 1
+            if (y <= tableroAlto/2){
+                out.println ("Cuadrante 1");
+                cuadrante=1;
+            } 
+            else{
+                out.println ("Cuadrante 2");
+                cuadrante = 2;
+            }
+            //Cuadrantes 3 y 4
+        }
+        else{
+            //Cuadrante 3
+            if (x > (tableroAncho/2)){
+                out.println ("Cuadrante 3");
+                cuadrante = 3;
+            }else {
+                out.println ("Cuadrante 4");
+                cuadrante = 4;
+            }
+        }
+        out.println ("getCuadranteReturn: " + cuadrante);
+        return cuadrante;
     }
     
     private void girarHastaGrado (double origen, double destino){
