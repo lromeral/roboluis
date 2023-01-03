@@ -27,6 +27,8 @@ public class RoboLuis extends Robot {
     static int numRobotsEnCombate;
     int poderDeDisparo;
     int esquinaDestino;
+    boolean trayectoInterrumpido;
+    boolean enTrayecto;
     boolean hayRobot = false;
     final static double ROBOT_HEIGHT = 36 * 2;
     final static double ROBOT_WIDTH = 36 * 2;
@@ -55,11 +57,13 @@ public class RoboLuis extends Robot {
         boolean disparo = false;
         
         //Se ha solicitado una evaluación de disparo por lo que hay que parar todo
-        //stop();
+        stop();
+        if (enTrayecto) trayectoInterrumpido = true;
         
         out.println ("Centro de Disparo");
         //Merece la pena disparar? 
         //Depende de:
+        //  -No hay sobrecalentamiento (getGunHeat() < 0)
         //  -Energia Actual
         //  -Calentamiento actual de la torreta
         //  -Le hemos dado anteriormente
@@ -68,39 +72,49 @@ public class RoboLuis extends Robot {
         
         //Condiciones:
         out.println ("Condiciones de disparo:");
+        out.println ("Calentamiento: " + getGunHeat());
         out.println ("Impacto anterior: "  + impactosAnteriores + "/" + leHeDado);
         out.println ("Energia: " + energiaDisparo + "/" + energy);
         out.println ("Distancia: " + enemigo.getDistance() + "/" + distanciaDisparo);
         
         //Si le hemos dado anteriormente, me da igual otra cosa que disparamos
-        if (leHeDado > impactosAnteriores) {
-            disparo = true;
-        }
-        //No le hemos dado anteriormente, pero...
-        else {
-            //Estamos sobrantes de energia, por probar que no quede
-            if (energy >energiaDisparo){
+        if (getGunHeat() <= 0){
+            if (leHeDado > impactosAnteriores) {
                 disparo = true;
             }
-            //No tenemos mucha energia pero....
+            //No le hemos dado anteriormente, pero...
             else {
-                //Esta muy muy cerca
-                if (enemigo.getDistance() < distanciaDisparo){
+                //Estamos sobrantes de energia, por probar que no quede
+                if (energy >energiaDisparo){
                     disparo = true;
                 }
+                //No tenemos mucha energia pero....
+                else {
+                    //Esta muy muy cerca
+                    if (enemigo.getDistance() < distanciaDisparo){
+                        disparo = true;
+                    }
+                }
             }
+        }
+        else{
+            out.println ("No puedo disparar. GunHeat: " + getGunHeat());
         }
         //Si hay condiciones para disparo, pum!!
         if (disparo) { 
             out.println ("Disparando: " + poderDeDisparo);
-            fire(1);
+            fire(poderDeDisparo);
         }
         //Devolvemos el control
-        //resume
+        resume ();
+        irAEsquina (esquinaDestino);
     }
 
     @Override
     public void run(){
+        //Colores del robot
+        //setBodyColor (1);
+        
         //Variables varias
         poderDeDisparo = 1;
         
@@ -112,18 +126,26 @@ public class RoboLuis extends Robot {
         //Vamos a nuestra esquina preferida
         out.println ("Empieza");
         
-        while (true){
-            for (esquinaDestino=1;esquinaDestino<5;esquinaDestino++){
-                out.println ("Objetivo: Esquina " + esquinaDestino);
-                irAEsquina (esquinaDestino);
-                //Me quedo en la esquina hasta que me den
-                while (meHanDado == 0){
-                    escanearTablero();
-                }
-                //Me he ido a otro sitio porque me han dado asi que reseteo el contador de camperismo
-                meHanDado = 0;
-            }
-        }
+//        while (true){
+//            for (esquinaDestino=1;esquinaDestino<5;esquinaDestino++){
+//                out.println ("Objetivo: Esquina " + esquinaDestino);
+//                //Comienza un nuevo movimiento
+//                //Mientras que no se finalice el trayecto lo sigue intentando
+//                    irAEsquina (esquinaDestino);
+//                    //Me quedo en la esquina hasta que me den
+//                    /*
+//                        escanearTablero();
+//                    }
+//                    */
+//                //Me he ido a otro sitio porque me han dado asi que reseteo el contador de camperismo
+//                meHanDado = 0;
+//            }
+//        }
+    esquinaDestino = 1;
+    irAEsquina (esquinaDestino); 
+    esquinaDestino = 2;
+    irAEsquina (esquinaDestino); 
+
     }
     
     //This method is called when one of your bullets hits another robot.
@@ -160,11 +182,6 @@ public class RoboLuis extends Robot {
         //Relativo a mi posicion -180 a 180
         locEnemigo = event.getBearing();
         out.println ("Desde: " + locEnemigo );
-        //apunta al enemigo
-        //centrarRadar ();
-        //y metele un disparo gordo
-        
-        //stop();
         out.println ("Busca, dispara y huye");
         if (locEnemigo > 0){
             turnRight (Math.abs(locEnemigo));
@@ -172,9 +189,8 @@ public class RoboLuis extends Robot {
         else{
             turnLeft (Math.abs(locEnemigo));
         }
-        fire (10);
+        fire (poderDeDisparo * 3);
         
-        //resume();
     }
     
     //This method is called when your robot collides with another robot.
@@ -192,31 +208,36 @@ public class RoboLuis extends Robot {
     @Override
     //This method is called every turn in a battle round in order to provide the robot status as a complete snapshot of the robot's current state at that specific time.
     public void onStatus(StatusEvent e){
-        posX = getX();
-        posY = getY();
-        tableroAlto = getBattleFieldHeight();
-        tableroAncho = getBattleFieldWidth();
-        energy = getEnergy();
-        gunHeat = getGunHeat();
-        orientacion = getHeading();
-        numRobotsEnCombate = getOthers();
-        out.println ("CoorX: " + posX + " CoorY: " + posY + " Orientacion: " + orientacion +  "O. Norm: " + normalRelativeAngleDegrees(orientacion)    + " energía: " + energy);
+//        posX = getX();
+//        posY = getY();
+//        tableroAlto = getBattleFieldHeight();
+//        tableroAncho = getBattleFieldWidth();
+//        energy = getEnergy();
+//        gunHeat = getGunHeat();
+//        orientacion = getHeading();
+//        numRobotsEnCombate = getOthers();
+//        out.println ("CoorX: " + posX + " CoorY: " + posY + " Orientacion: " + orientacion +  "O. Norm: " + normalRelativeAngleDegrees(orientacion)    + " energía: " + energy);
+//        out.println ("Trayecto Interrumpido: " + trayectoInterrumpido);
+//        out.println ("En Trayecto: " + enTrayecto);
+//        out.println ("Destino: "+ esquinaDestino);
     }
     
     
     //Detecta un robot
     @Override
     public void onScannedRobot(ScannedRobotEvent e) {
-        out.println ("Robot encontrado: " + e.getName());
-        out.println ("Robot a:" + e.getDistance());
-        out.println ("Robot Orientacion: " + e.getHeading());
-        out.println ("Robot Velocidad: "+ e.getVelocity());
-        out.println ("Robot energia: " + e.getEnergy());
-        out.println ("Robot bearing: " + e.getBearing());
-   
+//        out.println ("Robot encontrado: " + e.getName());
+//        out.println ("Robot a:" + e.getDistance());
+//        out.println ("Robot Orientacion: " + e.getHeading());
+//        out.println ("Robot Velocidad: "+ e.getVelocity());
+//        out.println ("Robot energia: " + e.getEnergy());
+//        out.println ("Robot bearing: " + e.getBearing());
+//        
+//        out.println ("GunHeat: " + getGunHeat()); 
+        
         //Pasamos el control al centro de disparo
-        centroDeDisparo(e);
-
+        //centroDeDisparo(e);
+        
     }    
     
     private void escanearTablero (){
@@ -260,6 +281,9 @@ public class RoboLuis extends Robot {
     //3 - Esquina Superior Derecha
     //4 - Esquina Inferior Derecha
     public void irAEsquina (int numEsquina){
+        //Activamos flag por si el trayecto se interrumpe con un enemigo
+        enTrayecto = true;
+        trayectoInterrumpido = false;
         out.println ("Ir a esquina");
         switch (numEsquina){
             case 0:
@@ -315,6 +339,8 @@ public class RoboLuis extends Robot {
             default:
                 break;
         }
+        //Movimiento completado
+        enTrayecto = false;
     }
     
     private int getCuadrante (double x, double y){
@@ -350,6 +376,10 @@ public class RoboLuis extends Robot {
     }
     
     private void girarHastaGrado (double origen, double destino){
+        //Hay que girar siempre de cara al tablero para no perder de vista a los enemigos
+        
+        out.println ("girarHastaGrado Origen: " + origen + " Destino:" + destino);
+        
         if (origen > destino){
             turnLeft (origen - destino);
         }else if (origen < destino){
@@ -357,5 +387,6 @@ public class RoboLuis extends Robot {
         }else{
             //Nada
         }
+
     }
 }
