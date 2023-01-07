@@ -4,7 +4,7 @@
  */
 package roboluis;
 import robocode.*;
-
+import static robocode.util.Utils.*;
 /**
  * Robot para asignatura PROGRAMACION
  * @version 202212_01
@@ -35,15 +35,25 @@ public class RoboLuis extends Robot {
     }
     
     public void evaluarObjetivo (ScannedRobotEvent robotEnemigo){
-        if (robotEnemigo.getDistance() < 30000 || numEnemigos == 1){
-            //turnLeft (robotEnemigo.getBearing());
-            fire(1);
-            
+        //Depende de:
+        //Energia disponible
+        //Distancia del objetivo
+        
+        //Si estamos con buena energia y detectamos una victima, vamos a por el
+        
+        double energia = getEnergy();
+        
+        if (energia > 75 && robotEnemigo.getDistance() < 200){
+            seguirRobot (robotEnemigo);
         }
         else{
-            out.println ("No disparo");
+            if (energia * 5 >robotEnemigo.getDistance()){
+                fire(1);
+            }
+            else{
+                out.println ("No disparo");
+            }
         }
-            
     }
     
     public void  huir(){
@@ -109,7 +119,13 @@ public class RoboLuis extends Robot {
     //This method is called when your robot collides with another robot.
     @Override
     public void onHitRobot(HitRobotEvent event){
-
+        out.println ("onHitRobot");
+        //Si se choca, gira hacia el robot, dispara a full power y reaunda 
+        stop();
+        //¿Donde esta con respecto a mi orientacion?
+        turnLeft (-event.getBearing());
+        fire(5);
+        huir();
     }
     
     //This method is called when your robot collides with a wall.
@@ -119,13 +135,10 @@ public class RoboLuis extends Robot {
     }
 
     public void orientarRobotEnGrados (double grados){
-        
-        
-        
         double heading = getHeading();
        
-        double gradosAjustados = (grados == 0 && heading > 180)?360:grados;
-        
+        //Ajustamos los grados para que queden entre 0-360
+        double gradosAjustados = normalAbsoluteAngleDegrees (grados);
         
         out.println ("Heading: " + getHeading() + " Ajustados " + gradosAjustados);
         if (heading > gradosAjustados){
@@ -171,5 +184,9 @@ public class RoboLuis extends Robot {
             }
 
         }
+    }
+    
+    public void seguirRobot (ScannedRobotEvent robot){
+        
     }
 }
