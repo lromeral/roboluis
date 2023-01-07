@@ -6,187 +6,232 @@ package roboluis;
 import robocode.*;
 import static robocode.util.Utils.*;
 /**
- * Robot para asignatura PROGRAMACION
+ * Robot para asignatura PROGRAMACION basado en el robot de ejemplo TRACKER. El funcionamiento del robot es simple. Girar
+ * hasta encontrar un objetivo e ir a su ubicacion para confiar en nuestra potencia de fuego y ganar. Si durante
+ * 
  * @version 202212_01
  * @author lromeral
  * 
  * ROBOCODE API: https://robocode.sourceforge.io/docs/robocode/
  */
 public class RoboLuis extends Robot {
-    int numEnemigos;
-    boolean atacarRobot;
-    int esquinaDestino;
-
+    String robotASeguir;
+    int contador;
+    boolean huir;
+    
+    /**
+     *
+     */
     public void RoboLuis(){
     } 
     
-    
-    public void escanearTablero(){
-        turnLeft(360);
-    }
-    
-    
-    public void escanearTablero(double gradosInicio, double gradosFinal){
-        //Orientar el robot a inicio
+    /** 
+     * Calcula el poder de disparo en funcion de la distancia del objetivo 
+    *   @param distancia    double  Distancia a la que esta el objetivo
+    *   @param max          boolean Es true, ignora la distancia y dispara con la maxima potencia
+    *    
+    *   @return int                 Potencia de disparo calculada
+    **/ 
+    public int calcularPoderDeDisparo (double distancia, boolean max){
         
-        orientarRobotEnGrados (gradosInicio);
-        orientarRobotEnGrados (gradosFinal);
-        
-    }
-    
-    public void evaluarObjetivo (ScannedRobotEvent robotEnemigo){
-        //Depende de:
-        //Energia disponible
-        //Distancia del objetivo
-        
-        //Si estamos con buena energia y detectamos una victima, vamos a por el
-        
-        double energia = getEnergy();
-        
-        if (energia > 75 && robotEnemigo.getDistance() < 200){
-            seguirRobot (robotEnemigo);
-        }
-        else{
-            if (energia * 5 >robotEnemigo.getDistance()){
-                fire(1);
+            //Si es maximo, da 10 y sales.
+            if (max) return 10;
+      
+            if (distancia < 100) {
+                return 10;
             }
-            else{
-                out.println ("No disparo");
+            else if (distancia >=100 && distancia < 150) {
+                return 5;
             }
+            else if (distancia >= 150 && distancia <200){
+                return 2;
+            }
+            else {
+                return 1;
+            }
+        
+    }
+    /** 
+     * Calcula el poder de disparo en funcion de la distancia del objetivo 
+    *   @param distancia    double  Distancia a la que esta el objetivo
+    *    
+    *   @return int                 Potencia de disparo calculada
+    **/ 
+     public int calcularPoderDeDisparo (double distancia){
+         return this.calcularPoderDeDisparo (distancia, false);
+     }
+
+    /** 
+     * Evento que se genera cuando nos nuestro disparo acierta
+     *
+     * @param event    BulletHitEvent  Datos del evento
+    **/ 
+    @Override
+    public void onBulletHit(BulletHitEvent event){
+        out.println ("Hemos dado a " + event.getName());
+    }
+    
+    /** 
+     * Evento que se genera cuando fallamos un disparo
+     * @param event     BulletMissedEvent    Datos del evento
+    **/ 
+    @Override
+    public void onBulletMissed(BulletMissedEvent event){
+    }
+    
+    /**  
+     * Evento que se genera cuando nos alcanza un disparo. Vemos si nos ataca
+    *  nuestro objetivo y si es asi, nos giramos hacia el.
+    *
+    *  @param event HitByBulletEvent   Datos del evento
+    **/ 
+    @Override
+    public void onHitByBullet(HitByBulletEvent event) {
+        //Si me dan huir rapidamente
+        out.println ("Me ha dado: " + event.getName());
+        //Me ha dado el que vamos siguiendo
+        if (event.getName().equals (robotASeguir)){
+            turnRight (event.getBearing());
+        }
+        else {
+            huir = true;
         }
     }
     
-    public void  huir(){
+    /**
+     * Evento generado cuando se colisiona contra otro robot.
+     * 
+     * @param event HitRobotEvent Datos del evento
+     */
+    @Override
+    public void onHitRobot(HitRobotEvent event){
+        double giro;
+        
+	// Si me choco con otro robot al que no estoy siguiendo, como está mas cerca, seguirlo.
+	if (robotASeguir != null && !robotASeguir.equals(event.getName())) {
+            out.println("Cambio de objetivo a " + event.getName() + " por choque");
+	}
+	// Asigno el objetivo
+	robotASeguir = event.getName();
+        
+        //Me giro hacia él y como esta a bocajarro, le disparo a maxima potencia y me echo hacia atrás.
+	giro = normalRelativeAngleDegrees(event.getBearing() + (getHeading()));
+	turnRight(giro);
+	fire(calcularPoderDeDisparo(0, true));
+        back(50);
+    }
+    
+    
+    /**
+     * Evento generado cuando se colisiona contra una pared
+     * 
+     * @param event HitWallEvent    Datos del evento generado
+     */
+    
+    @Override
+    public void onHitWall(HitWallEvent event){
+        
+        stop();
+        back (100);
+        turnRight (180);
+        resume ();
+    }
+    /**
+     * Cada turno se ejecuta y reporta los datos actuales del robot
+     * 
+     * @param e StatusEvent Datos del evento
+     */
+    @Override
+    public void onStatus(StatusEvent e){
+            //out.println ("Contador: " + contador);
+    }
+    /**
+     * Obtiene los datos generados al detectar un robot con el radar.
+     * 
+     * @param e ScannedRobotEvent   Datos generados por el evento
+     */
+    @Override
+    public void onScannedRobot(ScannedRobotEvent e) {
+        out.println ("onScannedRobot");
+        //Si detectamos otro, no seguimos
+        //Basado en robot.Tracker
+        if (robotASeguir != null && !e.getName().equals(robotASeguir)){
+            out.println ("onScannedRobot out: " + robotASeguir + " getName: " + e.getName());
+            return;
+        }
    
-        out.println ("Dentro Huir: EsquinaDestino " + esquinaDestino);
         
-        if (esquinaDestino==1 || esquinaDestino ==4){
-            out.println ("Entra en 1-4");
-            //Orienta hacia abajo
-            orientarRobotEnGrados (180);
-            //Avanza tanto como sea necesario dependiendo de la posición hasta que la y=0
-            ahead (getY());
-            if (esquinaDestino==1){
-                turnRight (90);
-                ahead (getX());
+        // Blanco seleccionado
+        if (robotASeguir == null) {
+            robotASeguir = e.getName();
+            out.println("Blanco fijado: " + robotASeguir);            
+	}
+       
+        contador = 0;
+        
+        
+        //Blanco detectado
+        if (e.getDistance() > 150){
+            out.println ("Yendo a por " + e.getName() + " a una distancia de " + e.getDistance() );
+            turnRight (e.getBearing());
+            //Todavia esta lejos
+            if (e.getDistance() > 300){
+                out.println ("mas de 300 ->" + e.getDistance());
+                ahead (75);
+                scan();
+            }else{
+                out.println ("menos de 300");
+                ahead (e.getDistance() - 50 );
             }
-            else{
-                turnLeft (90);
-                ahead (getBattleFieldWidth() - getX());
+            return;
+        }
+        
+        //Aqui estamos en distancia menor a 300
+        out.println ("Disparando a " + e.getName());
+        fire (calcularPoderDeDisparo(e.getDistance()));
+        
+        //Si estamos muy cerca...
+
+        if (e.getDistance() < 100) {
+            if (e.getBearing() > -90 && e.getBearing() <= 90) {
+                
+                back(40);
+            } else {
+		ahead(40);
             }
             
         }
-        else{
-            out.println ("Entra en 2-3");
-            orientarRobotEnGrados (0);
-            //Sube hasta que la y sea igual a la altura del campo de combate
-            ahead (getBattleFieldHeight() - getY());
-            if (esquinaDestino==2){
-                turnLeft (90);
-                ahead (getX());
-            }
-            else{
-                turnRight (90);
-                ahead (getBattleFieldWidth() - getX());
-            }
-        }
-        
-        //Una vez encaramos la esquina a la que queremos ir
-        
-        //orientarRobotEnGrados (45 + ((esquinaDestino-1) * 90 ));
-        escanearTablero ((esquinaDestino -1)* 90,((esquinaDestino -1)* 90) + 90);
-        
+	scan();   
     }
-
-
-    //This method is called when one of your bullets hits another robot.
-    @Override
-    public void onBulletHit(BulletHitEvent event){
-
-    }
-    
-    //This method is called when one of your bullets misses, i.e. hits a wall.
-    @Override
-    public void onBulletMissed(BulletMissedEvent event){
-
-    }
-    
-    //This method is called when your robot is hit by a bullet
-    @Override
-    public void onHitByBullet(HitByBulletEvent event) {
-    }
-    
-    //This method is called when your robot collides with another robot.
-    @Override
-    public void onHitRobot(HitRobotEvent event){
-        out.println ("onHitRobot");
-        //Si se choca, gira hacia el robot, dispara a full power y reaunda 
-        stop();
-        //¿Donde esta con respecto a mi orientacion?
-        turnLeft (-event.getBearing());
-        fire(5);
-        huir();
-    }
-    
-    //This method is called when your robot collides with a wall.
-    @Override
-    public void onHitWall(HitWallEvent event){
-
-    }
-
-    public void orientarRobotEnGrados (double grados){
-        double heading = getHeading();
-       
-        //Ajustamos los grados para que queden entre 0-360
-        double gradosAjustados = normalAbsoluteAngleDegrees (grados);
-        
-        out.println ("Heading: " + getHeading() + " Ajustados " + gradosAjustados);
-        if (heading > gradosAjustados){
-            turnLeft (heading - gradosAjustados);
-            out.println ("Izda");
-        }
-        else{
-            turnRight (gradosAjustados - heading);
-            out.println ("Dcha");
-        }
-    }
-    
-    @Override
-    //This method is called every turn in a battle round in order to provide the robot status as a complete snapshot of the robot's current state at that specific time.
-    public void onStatus(StatusEvent e){
-            numEnemigos = getOthers();
-    }
-    
-    
-    //Detecta un robot
-    @Override
-    public void onScannedRobot(ScannedRobotEvent e) {
-        out.println ("Detectado " + e.getName() + " a " + e.getDistance() );
-        stop();
-        evaluarObjetivo (e);
-        scan();
-        resume();
-    }
+    /**
+     * Metodo que se ejecuta al comienzo.
+     */
     
     @Override
     public void run(){
-        
-        //Al arrancar escanear objetivos
+        robotASeguir = null;
         while (true){
-            //Si hay mas de 3, esconderse
-            escanearTablero();
-            if (getOthers() > 0){
-                for (esquinaDestino = 1; esquinaDestino <=4;esquinaDestino++){
-                    out.println ("EsquinaDestino: " + esquinaDestino);
-                    huir();
+            //Si no tenemos a nadie, girar hasta encontrar a alguien
+            while (robotASeguir ==null){
+                turnLeft(10);
+                if (huir) {
+                    ahead (50);
+                    huir = false;
                 }
-    
             }
-
+            contador++;
+            // If we've haven't seen our target for 2 turns, look left
+            if (contador > 2 && contador <10) {
+                    turnLeft(10);
+            }
+            // If we still haven't seen our target for 5 turns, look right
+            if (contador >= 11 && contador <20) {
+                    turnRight (10);
+            }
+            // If we *still* haven't seen our target after 10 turns, find another target
+            if (contador >= 21) {
+                    robotASeguir = null;
+            }
         }
-    }
-    
-    public void seguirRobot (ScannedRobotEvent robot){
-        
     }
 }
